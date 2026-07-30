@@ -1,4 +1,4 @@
-.PHONY: help dockerfile_lint build scan push release
+.PHONY: help check_env dockerfile_lint build scan push release
 
 help:
 	@echo "Available commands:"
@@ -39,8 +39,18 @@ dockerfile_lint: check_env
 	@echo "==> Linting $(DOCKERFILE)"
 	docker run --rm -i hadolint/hadolint < $(DOCKERFILE)
 
+secret_scan: check_env
+	@echo "==> Trivy Secrets Scan"
+	docker run \
+		-v $(CURDIR):/src \
+		-v trivy-cache:/root/.cache \
+		-v ${HOME}/.m2:/root/.m2 \
+		--rm aquasec/trivy \
+		fs --scanners secret /src
+
+
 # 2. Build docker image with two tags, numeric and "latest"
-build: dockerfile_lint
+build: check_env
 	@echo "==> Building image $(IMAGE_NAME):$(TAG)..."
 	docker build \
 		-t $(IMAGE_NAME):latest \
@@ -48,7 +58,7 @@ build: dockerfile_lint
 		./$(SERVICE)
 
 # 3. Check created image with both dockle and trivy.
-scan: build
+scan: check_env
 	@echo "==> Scanning image with Trivy..."
 	docker run \
 		-v /var/run/docker.sock:/var/run/docker.sock \
@@ -66,7 +76,7 @@ scan: build
 		$(IMAGE_NAME):$(TAG) --exit-code 1 --exit-level fatal 
 
 # 4. Push image to registry
-push: scan
+push: check_env
 	@test -n "$(GHCR_TOKEN)" || (echo "Error: GHCR_TOKEN not set" && exit 1)
 	@echo "==> Logging into GHCR..."
 	@echo "$(GHCR_TOKEN)" | docker login ghcr.io -u $(GHCR_USER) --password-stdin
@@ -75,6 +85,7 @@ push: scan
 	docker push $(IMAGE_NAME):$(TAG)
 	docker push $(IMAGE_NAME):latest
 
+# For developement tests, not CI.
 release: dockerfile_lint build scan push
 	@echo "==> Release process for $(SERVICE) completed successfully."
 	
