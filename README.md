@@ -1,5 +1,7 @@
 # TASK 1
 
+> Chwiłę po odesłaniu mnie olśniło że warto podzielić jedno polecenie `Makefile` na kilka, a po chwili okazało się że można zrobić `<polecenie>: <zależność>`. Więc przerobiłem główny `Makefile`, zostawiając stary w pliku `Makefile.backup`.
+
 ## Opis
 
 Tworzy przepływ obrazu Docker z sprawdzeniem jakości. Używa narzędź hadolint, trivy oraz dockle. Składa się z 4 kroków, każdy z których jest w stanie przerwać przepływ przy wykryciu błędów.<br>
