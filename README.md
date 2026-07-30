@@ -1,1 +1,105 @@
-## TASK 1
+# TASK 1
+
+## Opis
+
+Tworzy przepływ obrazu Docker z sprawdzeniem jakości. Używa narzędź hadolint, trivy oraz dockle. Składa się z 4 kroków, każdy z których jest w stanie przerwać przepływ przy wykryciu błędów.<br>
+
+Użycie:
+```
+export GHCR_TOKEN=<token>
+make push_image SERVICE=<backend|frontend> [TAG=<tag>]
+```
+- `SERVICE` - obraz serwisu do zbudowania, sprawdzenia i wypchnięcia. Domyślnie jest ustawiony na `backend`
+- `TAG` - tag obrazu, domyślnie jest w formie git short SHA
+- `GHCR_TOKEN` - token do rejestru udostępniony przez powłokę. Zbędne przy użyciu w prawdziwym `CI`, ponieważ byłby dostępny przez manager sekretów np. `GitHub Secrets`.
+
+Przepływ:
+1. Skanuje Dockerfile za pomocą narzędzia hadolint.
+2. Buduje obraz.
+3. Sprawdza przy pomocy narzędź trivy oraz dockle jakość obrazów.
+4. Wypycha obraz do rejestru GHCR.
+
+### Dokładny opis kroków
+
+#### **1. Skanuje Dockerfile za pomocą narzędzia hadolint:**
+```
+docker run --rm -i hadolint/hadolint < $(DOCKERFILE)
+```
+Uruchamia tymczasowy kontener z obrazem hadolint i pcha zmienną `DOCKERFILE` zawierającą ścieżkę do Dockerfile. Przy wykryciu błędu automatycznie zwraca błąd przerywając przepływ.
+#### **2. Buduje obraz:**
+```
+docker build \
+		-t $(IMAGE_NAME):latest \
+		-t $(IMAGE_NAME):$(TAG) \
+		./$(SERVICE)
+```
+Buduje obraz podanego przez użytkownika `SERVICE` z dwoma tagami:
+- `latest` - domyślny tag ostatniego wypchnięcia obrazu.
+- `TAG` - domyślnie git short SHA, może być ustawiony przez użytkownika.
+#### **3. Sprawdza przy pomocy narzędź trivy oraz dockle jakość obrazów:**
+Ten etap składa się z dwóch kroków.
+##### **Trivy**
+```
+docker run \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v trivy-cache:/root/.cache \
+		--rm aquasec/trivy \
+		image $(IMAGE_NAME):$(TAG) \
+		--severity HIGH,CRITICAL \
+		--exit-code 1
+```
+Uruchamia tymczasowy kontener z obrazem trivy. Posiada dwa mounty wolumenów, dwa argumenty wywoływania trivy'ego. Przerywa przepływ przy znalezieniu podatności ocenianych jako `HIGH` oraz `CRITICAL`. W pozostałych przypadkach pozostawia informacje o mniejszych błędach . 
+
+1. Wolumeny:
+   - `trivy-cache` - cache triviego, wolumen wymagany od twórców.
+   - `docker.sock` - bez tego wolumenu Trivy nie jest w stanie zobaczyć obrazu, który chcemy przeskanować. Daje Trivy'emu dostęp do Docker daemon. 
+2. Argumenty wywoływania:
+   - `--severity` - przerywa przepływ przy wykryciu podatności o "poważności" `HIGH` oraz `CRITICAL`
+   - `--exit-code` - domyślnie trivy przy wykryciu błędów zwraca kod `0`, pełniać bardziej funkcję informacyjną. Wymuszenie zwracania kodu `1` przy wykryciach błędów automatycznie przerywa proces w `Makefile`.
+
+##### **Dockle**
+```
+docker run --rm \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v $(shell pwd)/.dockleignore:/.dockleignore \
+		goodwithtech/dockle:v$(DOCKLE_VERSION) \
+		$(IMAGE_NAME):$(TAG) --exit-code 1 --exit-level fatal 
+```
+Uruchamia tymczasowy kontener z obrazem Dockle. Używa dwóch wolumenów oraz dwóch argumentów. Skanuje obraz na podatności, przy wykryciu błędów o progu minimalnym `fatal` przerywa działanie przepływu.
+1. Wolumeny:
+   - `.dockleignore` - plik z konfiguracją ignorowanych podatności. Zawiera jedną podatność wynikającą z obrazu nginx używanego w `frontend`.
+   - `docker.sock` - bez tego wolumenu Dockle nie jest w stanie zobaczyć obrazu, który chcemy przeskanować. Daje Dockle'u dostęp do Docker daemon. 
+2. Argumenty wywoływania:
+   - `--exit-level` - przerywa przepływ przy wykryciu podatności o progu minimalnym `fatal`.
+   - `--exit-code` - domyślnie trivy przy wykryciu błędów zwraca kod `0`, pełniać bardziej funkcję informacyjną. Wymuszenie zwracania kodu `1` przy wykryciach błędów automatycznie przerywa proces w `Makefile`.
+
+#### **4. Wypycha obraz do rejestru GHCR:**
+```
+@test -n "$(GHCR_TOKEN)" || (echo "Error: GHCR_TOKEN not set" && exit 1)
+@echo "$(GHCR_TOKEN)" | docker login ghcr.io -u $(GHCR_USER) --password-stdin
+	
+docker push $(IMAGE_NAME):$(TAG)
+docker push $(IMAGE_NAME):latest
+```
+Sprawdza czy token do GHCR został podany przez użytkonika, następnie wykonuje login do ghcr.io. Jak to przejdzie wypycha obraz o tagu `TAG` oraz `latest` do rejestru.
+
+## Demostracja dziłania
+
+Do sprawdzenia działania używałem kodu źródłowego z mojego projektu [Trippy](), przeniosłem dwa serwisy:
+- `backend` - napisany w Java i Springboot RESTapi.
+- `frontend` - napisany w Vue, ustawiony pod produkcję czyli serwowanie plików przez `nginx` a nie `Vite`.
+
+Obraz `backend` ma problemy wykryte przez Trivy oraz Dockle. Natomiast `frontend` jest czysty pod wzgłędem Trivy'ego, oraz posiadał jeden błąd false-positive. Więc `backend` nie przechodzi, a `frontend` przechodzi. Logi do przepływu obu:
+- [task-1-backend-log.txt](./task-1-backend-log.txt)
+- [task-1-frontend-log.txt](./task-1-frontend-log.txt)
+
+## Czego się nauczyłem
+Jest to sekcja gdzie wspominam jakieś nieoczywiste rzeczy które poznałem przy robieniu zadania, albo coś co mnie zaskoczyło po prostu.
+- Formatowanie Makefile - poznałem że Makefile jest dość wredny pod wzgłędem formatowania. W przypadku wywoływań poleceń wieloliniowych, rozbitych `\` prosta spacja potrafi złamać cały przepływ.
+- Używanie tymczasowych kontenerów z narzędziami. Nie byłem świadomy takich możliwości, pozwala na używanie narzędzi, bez konieczności ich instalacji na maszynie.
+- W prawdziwym `CI`, pobieranie `GHCR_TOKEN`'u jako zmiennej wewnątrz Makefile jest zbędne. CHYBA ŻE obraz jest publiczny to ogólnie część z logowaniem do rejestru można pominąć.
+- Narzędzia do skanowania obrazów czasami zwracają false-positives. W tym zadaniu konfiguracja tych narzędź jest bardzo prymitywna, mam tego świadomość.
+- `-v $(shell pwd)/.dockleignore:/.dockleignore` może niekoniecznie działać w CI. Ponieważ `pwd` może nie być tam gdzie tego faktycznie chcemy.
+- Nauczyłem się różnicy w Makefile'owych operatorach `?=`, `:=` oraz `=`. 
+- Obecny Makefile pobiera ostatnią dostępną wersję Dockle'a. Do przypadków gdyby miało to zawieźć ustawiona została wersja fallback'owa. Co nadal nie oznacza że jest to w pełni dobre rozwiązanie. Starsza wersja Dockle'a może mieć potencjalne bugi.
+- Do prawdziwego `CI`, znalazłym sposób wymuszać jawnie `exit-code` 1 na narzędziu `hadolint`. Obecnie sprawdziłem że faktycznie przerywa cały pipeline przy problemach, ale mimo wszystko lepiej stosować tu zasadę "ufaj, ale sprawdzaj". Jakby miało się coś zmienić w działaniu narzędzia, to przepływ tego nie wyłapie.
