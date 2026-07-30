@@ -9,7 +9,7 @@ Tworzy przepływ obrazu Docker z sprawdzeniem jakości. Używa narzędź hadolin
 Użycie:
 ```
 export GHCR_TOKEN=<token>
-make push_image SERVICE=<backend|frontend> [TAG=<tag>]
+make release SERVICE=<backend|frontend> [TAG=<tag>]
 ```
 - `SERVICE` - obraz serwisu do zbudowania, sprawdzenia i wypchnięcia. Domyślnie jest ustawiony na `backend`
 - `TAG` - tag obrazu, domyślnie jest w formie git short SHA
