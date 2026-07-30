@@ -1,62 +1,57 @@
-# 1. Check Dockerfile using hadolint
+==> Linting backend/Dockerfile
 docker run --rm -i hadolint/hadolint < backend/Dockerfile
-# 2. Build docker image with two tags, numeric and "latest"
+==> Building image ghcr.io/marshallbjorn/trippy-backend:0.1.0...
 docker build \
 	-t ghcr.io/marshallbjorn/trippy-backend:latest \
 	-t ghcr.io/marshallbjorn/trippy-backend:0.1.0 \
 	./backend
-#0 building with "default" instance using docker driver
+#0 building with "desktop-linux" instance using docker driver
 
 #1 [internal] load build definition from Dockerfile
 #1 DONE 0.0s
 
 #1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 402B done
-#1 DONE 0.1s
+#1 transferring dockerfile: 359B 0.0s done
+#1 DONE 0.0s
 
 #2 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre-alpine
-#2 DONE 0.6s
+#2 DONE 0.7s
 
 #3 [internal] load metadata for docker.io/library/maven:3.9.6-eclipse-temurin-21-alpine
 #3 DONE 0.7s
 
 #4 [internal] load .dockerignore
 #4 transferring context: 2B done
-#4 DONE 0.1s
+#4 DONE 0.0s
 
-#5 [internal] load build context
+#5 [builder 1/6] FROM docker.io/library/maven:3.9.6-eclipse-temurin-21-alpine@sha256:9fca6934e64eff26860889804faecb71a522d04b4ebf05574140c71f8e9bc700
+#5 resolve docker.io/library/maven:3.9.6-eclipse-temurin-21-alpine@sha256:9fca6934e64eff26860889804faecb71a522d04b4ebf05574140c71f8e9bc700 0.0s done
 #5 DONE 0.0s
 
 #6 [stage-1 1/3] FROM docker.io/library/eclipse-temurin:21-jre-alpine@sha256:3f08b13888f595cc49edabea7250ba69499ba25602b267da591720769400e08c
-#6 resolve docker.io/library/eclipse-temurin:21-jre-alpine@sha256:3f08b13888f595cc49edabea7250ba69499ba25602b267da591720769400e08c
-#6 resolve docker.io/library/eclipse-temurin:21-jre-alpine@sha256:3f08b13888f595cc49edabea7250ba69499ba25602b267da591720769400e08c 0.2s done
-#6 DONE 0.2s
+#6 resolve docker.io/library/eclipse-temurin:21-jre-alpine@sha256:3f08b13888f595cc49edabea7250ba69499ba25602b267da591720769400e08c 0.0s done
+#6 DONE 0.0s
 
-#7 [builder 1/6] FROM docker.io/library/maven:3.9.6-eclipse-temurin-21-alpine@sha256:9fca6934e64eff26860889804faecb71a522d04b4ebf05574140c71f8e9bc700
-#7 resolve docker.io/library/maven:3.9.6-eclipse-temurin-21-alpine@sha256:9fca6934e64eff26860889804faecb71a522d04b4ebf05574140c71f8e9bc700
-#7 resolve docker.io/library/maven:3.9.6-eclipse-temurin-21-alpine@sha256:9fca6934e64eff26860889804faecb71a522d04b4ebf05574140c71f8e9bc700 0.2s done
-#7 DONE 0.3s
+#7 [internal] load build context
+#7 transferring context: 16.51kB 0.0s done
+#7 DONE 0.0s
 
-#5 [internal] load build context
-#5 transferring context: 28.41kB 0.0s done
-#5 DONE 0.1s
-
-#8 [builder 4/6] RUN mvn dependency:go-offline -q
+#8 [stage-1 2/3] WORKDIR /app
 #8 CACHED
 
-#9 [stage-1 2/3] WORKDIR /app
+#9 [builder 4/6] RUN mvn dependency:go-offline -q
 #9 CACHED
 
-#10 [builder 2/6] WORKDIR /app
+#10 [builder 5/6] COPY src ./src
 #10 CACHED
 
 #11 [builder 3/6] COPY pom.xml .
 #11 CACHED
 
-#12 [builder 5/6] COPY src ./src
+#12 [builder 6/6] RUN mvn package -DskipTests -q
 #12 CACHED
 
-#13 [builder 6/6] RUN mvn package -DskipTests -q
+#13 [builder 2/6] WORKDIR /app
 #13 CACHED
 
 #14 [stage-1 3/3] COPY --from=builder /app/target/*.jar app.jar
@@ -64,18 +59,17 @@ docker build \
 
 #15 exporting to image
 #15 exporting layers done
-#15 exporting manifest sha256:7719b0df1c2712aa0665afe2278e60fc47ca5c4f638dd3a06bed65b033947fd2 0.0s done
-#15 exporting config sha256:67e6fd93913f9767a2a5596e63714d76a790a4e0b018df44257bbfca77425e3b 0.0s done
-#15 exporting attestation manifest sha256:87fa8a9af89e544612f7a7ec147be92562fa55b8cd6ab79dd00699ac0676000a
-#15 exporting attestation manifest sha256:87fa8a9af89e544612f7a7ec147be92562fa55b8cd6ab79dd00699ac0676000a 0.2s done
-#15 exporting manifest list sha256:5647b9bd3c5af2127eeadf761e37a7932315fc63c93c4f3201fcd085a8c37944
-#15 exporting manifest list sha256:5647b9bd3c5af2127eeadf761e37a7932315fc63c93c4f3201fcd085a8c37944 0.1s done
-#15 naming to ghcr.io/marshallbjorn/trippy-backend:latest 0.0s done
-#15 unpacking to ghcr.io/marshallbjorn/trippy-backend:latest 0.0s done
-#15 naming to ghcr.io/marshallbjorn/trippy-backend:0.1.0 0.0s done
-#15 unpacking to ghcr.io/marshallbjorn/trippy-backend:0.1.0 0.0s done
-#15 DONE 0.6s
-# 3. Check created image with both dockle and trivy.
+#15 exporting manifest sha256:544f13299014cacc5b7c601142fc6e2a53e1582dc01de6b4f59ef87e6d499344 done
+#15 exporting config sha256:a4288ae13135e78a7674d3016ff030b2fed322c7f04ac060877e5669b5f13b69 done
+#15 exporting attestation manifest sha256:a8d44d41969e98bd729eded5241ed3b4c62d51d961ba3e37704a1f87dbb488fc
+#15 exporting attestation manifest sha256:a8d44d41969e98bd729eded5241ed3b4c62d51d961ba3e37704a1f87dbb488fc 0.0s done
+#15 exporting manifest list sha256:a2afb0bc495617529bb027e0f78de9a3ce72f8c543351b559d4e26b4fe407786 0.0s done
+#15 naming to ghcr.io/marshallbjorn/trippy-backend:latest done
+#15 unpacking to ghcr.io/marshallbjorn/trippy-backend:latest done
+#15 naming to ghcr.io/marshallbjorn/trippy-backend:0.1.0 done
+#15 unpacking to ghcr.io/marshallbjorn/trippy-backend:0.1.0 done
+#15 DONE 0.2s
+==> Scanning image with Trivy...
 docker run \
 	-v /var/run/docker.sock:/var/run/docker.sock \
 	-v trivy-cache:/root/.cache \
@@ -83,16 +77,16 @@ docker run \
 	image ghcr.io/marshallbjorn/trippy-backend:0.1.0 \
 	--severity HIGH,CRITICAL \
 	--exit-code 1
-2026-07-30T07:58:32Z	INFO	[vuln] Vulnerability scanning is enabled
-2026-07-30T07:58:32Z	INFO	[secret] Secret scanning is enabled
-2026-07-30T07:58:32Z	INFO	[secret] If your scanning is slow, please try '--scanners vuln' to disable secret scanning
-2026-07-30T07:58:32Z	INFO	[secret] Please see https://trivy.dev/docs/v0.72/guide/scanner/secret#recommendation for faster secret detection
-2026-07-30T07:58:32Z	INFO	Detected OS	family="alpine" version="3.23.5"
-2026-07-30T07:58:32Z	INFO	[alpine] Detecting vulnerabilities...	os_version="3.23" repository="3.23" pkg_num=73
-2026-07-30T07:58:32Z	INFO	Number of language-specific files	num=1
-2026-07-30T07:58:32Z	INFO	[jar] Detecting vulnerabilities...
-2026-07-30T07:58:32Z	WARN	Using severities from other vendors for some vulnerabilities. Read https://trivy.dev/docs/v0.72/guide/scanner/vulnerability#severity-selection for details.
-2026-07-30T07:58:32Z	INFO	Table result includes only package filenames. Use '--format json' option to get the full path to the package file.
+2026-07-30T10:59:51Z	INFO	[vuln] Vulnerability scanning is enabled
+2026-07-30T10:59:51Z	INFO	[secret] Secret scanning is enabled
+2026-07-30T10:59:51Z	INFO	[secret] If your scanning is slow, please try '--scanners vuln' to disable secret scanning
+2026-07-30T10:59:51Z	INFO	[secret] Please see https://trivy.dev/docs/v0.72/guide/scanner/secret#recommendation for faster secret detection
+2026-07-30T10:59:51Z	INFO	Detected OS	family="alpine" version="3.23.5"
+2026-07-30T10:59:51Z	INFO	[alpine] Detecting vulnerabilities...	os_version="3.23" repository="3.23" pkg_num=73
+2026-07-30T10:59:51Z	INFO	Number of language-specific files	num=1
+2026-07-30T10:59:51Z	INFO	[jar] Detecting vulnerabilities...
+2026-07-30T10:59:51Z	WARN	Using severities from other vendors for some vulnerabilities. Read https://trivy.dev/docs/v0.72/guide/scanner/vulnerability#severity-selection for details.
+2026-07-30T10:59:51Z	INFO	Table result includes only package filenames. Use '--format json' option to get the full path to the package file.
 
 Report Summary
 
@@ -239,4 +233,4 @@ Total: 25 (HIGH: 19, CRITICAL: 6)
 │                                                            │                     │          │        │                   │                           │ arbitrary code execution                                     │
 │                                                            │                     │          │        │                   │                           │ https://avd.aquasec.com/nvd/cve-2026-54513                   │
 └────────────────────────────────────────────────────────────┴─────────────────────┴──────────┴────────┴───────────────────┴───────────────────────────┴──────────────────────────────────────────────────────────────┘
-make: *** [Makefile:42: push_image] Помилка 1
+make: *** [Makefile:52: scan] Error 1
