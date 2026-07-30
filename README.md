@@ -85,13 +85,13 @@ Sprawdza czy token do GHCR został podany przez użytkonika, następnie wykonuje
 
 ## Demostracja dziłania
 
-Do sprawdzenia działania używałem kodu źródłowego z mojego projektu [Trippy](), przeniosłem dwa serwisy:
+Do sprawdzenia działania używałem kodu źródłowego z mojego projektu [Trippy](https://github.com/MarshallBjorn/trippy), przeniosłem dwa serwisy:
 - `backend` - napisany w Java i Springboot RESTapi.
 - `frontend` - napisany w Vue, ustawiony pod produkcję czyli serwowanie plików przez `nginx` a nie `Vite`.
 
 Obraz `backend` ma problemy wykryte przez Trivy oraz Dockle. Natomiast `frontend` jest czysty pod wzgłędem Trivy'ego, oraz posiadał jeden błąd false-positive. Więc `backend` nie przechodzi, a `frontend` przechodzi. Logi do przepływu obu:
-- [task-1-backend-log.txt](./task-1-backend-log.txt)
-- [task-1-frontend-log.txt](./task-1-frontend-log.txt)
+- [task-1-backend-log.txt](./public_logs/task-1-backend-log.txt)
+- [task-1-frontend-log.txt](./public_logs/task-1-frontend-log.txt)
 
 ## Czego się nauczyłem
 Jest to sekcja gdzie wspominam jakieś nieoczywiste rzeczy które poznałem przy robieniu zadania, albo coś co mnie zaskoczyło po prostu.
