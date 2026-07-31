@@ -128,7 +128,8 @@ owasp_dep_check: check_env
 			--format HTML \
 			--out /report \
 			--project "trippy-$(SERVICE)" \
-			--noupdate
+			--noupdate \
+			--log /report/odc.log
 
 # 4. Push image to registry
 push: check_env

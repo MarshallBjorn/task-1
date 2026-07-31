@@ -112,8 +112,20 @@ jobs:
           name: sbom-${{ matrix.service }}
           path: sbom/
 
+      - name: DIAG przed OWASP
+        run: |
+          echo "=== RAM ==="
+          free -h
+          echo "=== .m2 na runnerze ==="
+          ls -la /home/runner/.m2/ 2>/dev/null && du -sh /home/runner/.m2/ 2>/dev/null || echo ".m2 pusty/brak"
+          echo "=== .nvd-cache ==="
+          ls -lh .nvd-cache/odc.mv.db
+          echo "=== docker info ==="
+          docker system df
+
       - name: OWASP Dependency-Check
         if: matrix.service == 'backend'
+        timeout-minutes: 10
         run: make owasp_dep_check SERVICE=${{ matrix.service }}
 
       - name: Upload OWASP report
