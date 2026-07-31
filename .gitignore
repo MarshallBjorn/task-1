@@ -30,3 +30,10 @@ replay_pid*
 # End of https://www.toptal.com/developers/gitignore/api/java
 
 .vscode/
+sbom/
+.env
+
+.trivy-cache/
+.nvd-cache/
+
+odc-report/

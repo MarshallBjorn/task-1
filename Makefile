@@ -17,6 +17,7 @@ SERVICE ?= backend
 TAG ?= $(shell git rev-parse --short HEAD)
 GHCR_USER ?= marshallbjorn
 GHCR_TOKEN ?=
+NVD_API_KEY ?=
 
 IMAGE_NAME ?= ghcr.io/marshallbjorn/trippy-$(SERVICE)
 DOCKERFILE = $(SERVICE)/Dockerfile
@@ -34,20 +35,21 @@ ifeq ($(filter $(SERVICE),backend frontend),)
 	@exit 1
 endif
 
-# 1. Check Dockerfile using hadolint
+# 1.1 Check Dockerfile using hadolint
 dockerfile_lint: check_env
 	@echo "==> Linting $(DOCKERFILE)"
 	docker run --rm -i hadolint/hadolint < $(DOCKERFILE)
 
+# 1.2 Scan filesystem for secrets
 secret_scan: check_env
 	@echo "==> Trivy Secrets Scan"
-	docker run \
+	docker run --rm \
 		-v $(CURDIR):/src \
 		-v trivy-cache:/root/.cache \
 		-v ${HOME}/.m2:/root/.m2 \
-		--rm aquasec/trivy \
+		aquasec/trivy \
 		fs --scanners secret /src
-
+			--exit-code 1
 
 # 2. Build docker image with two tags, numeric and "latest"
 build: check_env
@@ -57,7 +59,7 @@ build: check_env
 		-t $(IMAGE_NAME):$(TAG) \
 		./$(SERVICE)
 
-# 3. Check created image with both dockle and trivy.
+# 3.1 Check created image with both dockle and trivy.
 scan: check_env
 	@echo "==> Scanning image with Trivy..."
 	docker run \
@@ -74,6 +76,35 @@ scan: check_env
 		-v $(CURDIR)/.dockleignore:/.dockleignore \
 		goodwithtech/dockle:v$(DOCKLE_VERSION) \
 		$(IMAGE_NAME):$(TAG) --exit-code 1 --exit-level fatal 
+
+# 3.2 Create SBOM of image
+create_sbom: check_env
+	@echo "==> Creating SBOM file with Trivy..."
+	docker run \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v $(CURDIR)/.trivy-cache:/root/.cache \
+		-v $(CURDIR)/sbom:/sbom \
+		--rm aquasec/trivy \
+		image $(IMAGE_NAME):$(TAG) \
+		--format cyclonedx --output /sbom/$(SERVICE)-$(TAG)-sbom.json
+
+# 3.3 OWASP Dependency Check
+owasp_dep_check: check_env
+	@test -n "$(NVD_API_KEY)" || (echo "Error: NVD_API_KEY not set" && exit 1)
+	@mkdir -p $(CURDIR)/odc-report
+
+	@echo "==> Checking image with OWASP Dependency Check..."
+	@docker run --rm \
+		-v $(CURDIR)/$(SERVICE):/src \
+		-v $(HOME)/.m2:/root/.m2 \
+		-v $(CURDIR)/.nvd-cache:/usr/share/dependency-check/data \
+		-v $(CURDIR)/odc-report:/report \
+		owasp/dependency-check \
+			--scan /src \
+			--format HTML \
+			--out /report \
+			--nvdApiKey $(NVD_API_KEY) \
+			--project "trippy-$(SERVICE)"
 
 # 4. Push image to registry
 push: check_env

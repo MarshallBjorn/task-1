@@ -1,0 +1,85 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: trippy_postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    expose:
+      - "5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - trippy_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: trippy_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - APP_UPLOAD_DIR=/app/uploads
+      - SPRING_PROFILES_ACTIVE=prod
+    expose:
+      - "8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - trippy_network
+      - proxy
+    volumes:
+      - trippy_uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+        - FRONTEND_URL=${FRONTEND_URL}
+        - FILE_SERVER_URL=${FILE_SERVER_URL}
+    container_name: trippy_frontend
+    restart: unless-stopped
+    expose:
+      - "80"
+    depends_on:
+      - backend
+    networks:
+      - trippy_network
+      - proxy
+
+  file_server:
+    image: nginx:alpine
+    container_name: trippy_file_server
+    restart: unless-stopped
+    expose:
+      - 80
+    volumes:
+      - ./nginx:/etc/nginx/conf.d:ro
+      - trippy_uploads:/usr/share/nginx/html/uploads:ro
+    networks:
+      - trippy_network
+      - proxy
+
+volumes:
+  postgres_data:
+  trippy_uploads:
+
+networks:
+  trippy_network:
+    driver: bridge
+  proxy:
+    external: true

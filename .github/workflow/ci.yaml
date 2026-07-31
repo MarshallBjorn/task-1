@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  repo-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Maven .m2
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ hashFiles('backend/pom.xml') }}
+          restore-keys: |
+            m2-
+
+      - name: Populate .m2 if needed
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/backend:/app \
+            -v ~/.m2:/root/.m2 \
+            -w /app \
+            maven:3-eclipse-temurin-21 \
+            mvn dependency:go-offline -q
+
+      - name: Lint Dockerfiles
+        run: |
+          make dockerfile_lint SERVICE=backend
+          make dockerfile_lint SERVICE=frontend
+
+      - name: Secret scan
+        run: make secret_scan
+
+  pipeline:
+    needs: repo-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Maven .m2
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ hashFiles('backend/pom.xml') }}
+          restore-keys: |
+            m2-
+
+      - name: Get date
+        id: date
+        run: echo "date=$(date +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache NVD database
+        uses: actions/cache@v4
+        with:
+          path: .nvd-cache
+          key: nvd-${{ steps.date.outputs.date }}
+          restore-keys: nvd-
+
+      - name: Cache Trivy DB
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ github.run_id }}
+          restore-keys: trivy-db-
+
+      - name: Build image
+        run: make build SERVICE=${{ matrix.service }} TAG=${{ github.sha }}
+
+      - name: Trivy + Dockle scan
+        run: make scan SERVICE=${{ matrix.service }} TAG=${{ github.sha }}
+
+      - name: Generate SBOM
+        run: make create_sbom SERVICE=${{ matrix.service }} TAG=${{ github.sha }}
+
+      - name: Upload SBOM
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.service }}
+          path: sbom/
+
+      - name: OWASP Dependency-Check
+        if: matrix.service == 'backend'
+        run: make owasp_dep_check SERVICE=${{ matrix.service }}
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }} 
+
+      - name: Upload OWASP report
+        if: matrix.service == 'backend' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-report-${{ matrix.service }}
+          path: odc-report/
+
+      - name: Push to GHCR
+        if: github.ref == 'refs/heads/main'
+        run: make push SERVICE=${{ matrix.service }} TAG=${{ github.sha }}
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+
