@@ -118,7 +118,7 @@ owasp_dep_check: check_env
 	@chmod -R u+rw $(NVD_CACHE) 2>/dev/null || true
 
 	@echo "==> Checking image with OWASP Dependency Check..."
-	@docker run --rm \
+	docker run --rm \
 		-v $(CURDIR)/$(SERVICE):/src \
 		-v $(HOME)/.m2:/root/.m2 \
 		-v $(NVD_CACHE):/usr/share/dependency-check/data \
