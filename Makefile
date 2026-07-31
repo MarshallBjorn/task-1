@@ -104,23 +104,11 @@ owasp_update:
 
 # 3.3 OWASP Dependency Check
 owasp_dep_check: check_env
-	@test -f $(NVD_CACHE)/odc.mv.db || \
-		(echo "Error: baza NVD nieobecna ($(NVD_CACHE)/odc.mv.db). Odpal 'make owasp_update' albo zseeduj cache." && exit 1)
+	@test -f $(NVD_CACHE)/odc.mv.db || (echo "baza brak" && exit 1)
 	@mkdir -p $(CURDIR)/odc-report
-	@mkdir -p $(NVD_CACHE)
-
-	@echo "==> Cleaning up potential stale H2 locks..."
-	@rm -f $(NVD_CACHE)/*.lock.db
-	@rm -f $(NVD_CACHE)/odc.update.lock
-
-	@echo "==> Fix permissions for Docker mounts..."
-	@chmod -R u+rw $(CURDIR)/odc-report 2>/dev/null || true
-	@chmod -R u+rw $(NVD_CACHE) 2>/dev/null || true
-
-	@echo "==> Checking image with OWASP Dependency Check..."
-	docker run --rm \
+	@echo ">>> START $$(date +%T)"
+	-timeout 300 docker run --rm \
 		-v $(CURDIR)/$(SERVICE):/src \
-		-v $(HOME)/.m2:/root/.m2 \
 		-v $(NVD_CACHE):/usr/share/dependency-check/data \
 		-v $(CURDIR)/odc-report:/report \
 		$(ODC_IMAGE) \
@@ -129,7 +117,11 @@ owasp_dep_check: check_env
 			--out /report \
 			--project "trippy-$(SERVICE)" \
 			--noupdate \
-			--log /report/odc.log
+		> $(CURDIR)/odc-report/console.log 2>&1; \
+		echo "EXIT=$$?" | tee -a $(CURDIR)/odc-report/console.log
+	@echo ">>> KONIEC $$(date +%T)"
+	@echo "===== OSTATNIE 40 LINII console.log ====="
+	@tail -40 $(CURDIR)/odc-report/console.log || echo "console.log PUSTY albo nie powstal"
 
 # 4. Push image to registry
 push: check_env

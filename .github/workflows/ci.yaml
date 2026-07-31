@@ -122,9 +122,10 @@ jobs:
           ls -lh .nvd-cache/odc.mv.db
           echo "=== docker info ==="
           docker system df
+          pwd
 
       - name: OWASP Dependency-Check
-        if: matrix.service == 'backend'
+        if: matrix.service == 'backend' && always()
         timeout-minutes: 10
         run: make owasp_dep_check SERVICE=${{ matrix.service }}
 
