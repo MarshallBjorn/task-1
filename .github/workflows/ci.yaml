@@ -123,6 +123,12 @@ jobs:
           echo "=== docker info ==="
           docker system df
           pwd
+          ls
+          ls -la backend/
+          echo "=== env hosta ==="
+          env | grep -i "java\|jdwp\|agentlib" || echo "host czysty"
+          echo "=== co widzi JVM w kontenerze DC ==="
+          docker run --rm --entrypoint sh owasp/dependency-check:12.1.0 -c 'echo "JAVA_TOOL_OPTIONS=[$JAVA_TOOL_OPTIONS]"; echo "_JAVA_OPTIONS=[$_JAVA_OPTIONS]"; echo "JDK_JAVA_OPTIONS=[$JDK_JAVA_OPTIONS]"'
 
       - name: OWASP Dependency-Check
         if: matrix.service == 'backend' && always()
