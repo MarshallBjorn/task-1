@@ -106,9 +106,8 @@ owasp_update:
 owasp_dep_check: check_env
 	@test -f $(NVD_CACHE)/odc.mv.db || (echo "baza brak" && exit 1)
 	@mkdir -p $(CURDIR)/odc-report
-	docker ps
-	@echo ">>> START $$(date +%T)"
-	-timeout 300 docker run --rm \
+	
+ 	docker run --rm \
 		-v $(CURDIR)/$(SERVICE):/src \
 		-v $(NVD_CACHE):/usr/share/dependency-check/data \
 		-v $(CURDIR)/odc-report:/report \
@@ -116,13 +115,8 @@ owasp_dep_check: check_env
 			--scan /src \
 			--format HTML \
 			--out /report \
-			--project "trippy-$(SERVICE)" \
-			--noupdate \
-		> $(CURDIR)/odc-report/console.log 2>&1; \
-		echo "EXIT=$$?" | tee -a $(CURDIR)/odc-report/console.log
-	@echo ">>> KONIEC $$(date +%T)"
-	@echo "===== OSTATNIE 40 LINII console.log ====="
-	@tail -40 $(CURDIR)/odc-report/console.log || echo "console.log PUSTY albo nie powstal"
+			--project "trippy-$(SERVICE)"
+
 
 # 4. Push image to registry
 push: check_env
