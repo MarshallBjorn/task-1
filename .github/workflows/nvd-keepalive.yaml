@@ -7,20 +7,30 @@ name: NVD cache keep-alive
  
 on:
   schedule:
-    - cron: '0 6 */3 * *'   # co 3 dni, 06:00 UTC
+    - cron: '0 1 * * *' 
   workflow_dispatch:
  
 jobs:
   keepalive:
     runs-on: ubuntu-latest
     steps:
-      - name: Touch NVD cache
+      - name: Restore NVD cache
         uses: actions/cache/restore@v4
         with:
           path: .nvd-cache
-          key: nvd-v4
-          restore-keys: nvd-v4
+          key: nvd-v4-cron-${{ github.run_id }}
+          restore-keys: |
+            nvd-v4-cron-
+            nvd-v4
  
-      - name: Potwierdzenie
-        run: echo "Cache nvd-v4 dotkniety, 7-dniowy licznik zresetowany."
+      - name: Update NVD database
+        run: make owasp_update
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+
+      - name: Save updated NVD database
+        uses: actions/cache/save@v4
+        with:
+          path: .nvd-cache
+          key: nvd-v4-cron-${{ github.run_id }}
  

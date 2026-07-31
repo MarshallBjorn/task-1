@@ -92,10 +92,11 @@ create_sbom: check_env
 		--format cyclonedx --output /sbom/$(SERVICE)-$(TAG)-sbom.json
 
 
-owasp_update:
+owasp_update: check_env
 	@test -n "$(NVD_API_KEY)" || (echo "Error: NVD_API_KEY not set (potrzebny tylko do update, nie do skanu)" && exit 1)
 	@mkdir -p $(NVD_CACHE)
 	@docker run --rm \
+		--user $(shell id -u):$(shell id -g) \
 		-v $(NVD_CACHE):/usr/share/dependency-check/data \
 		$(ODC_IMAGE) \
 			--updateonly \
@@ -116,7 +117,8 @@ owasp_dep_check: check_env
 			--scan /src \
 			--format HTML \
 			--out /report \
-			--project "trippy-$(SERVICE)"
+			--project "trippy-$(SERVICE)" \
+			--noupdate
 
 
 # 4. Push image to registry

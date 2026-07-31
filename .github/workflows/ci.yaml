@@ -47,7 +47,9 @@ jobs:
         with:
           path: .nvd-cache
           key: nvd-v4
-          restore-keys: nvd-v4
+          restore-keys: |
+            nvd-v4-cron-
+            nvd-v4
  
       - name: Seed z release jesli cache pusty
         if: steps.nvd-cache.outputs.cache-hit != 'true'
@@ -87,7 +89,9 @@ jobs:
         with:
           path: .nvd-cache
           key: nvd-v4
-          restore-keys: nvd-v4
+          restore-keys: |
+            nvd-v4-cron-
+            nvd-v4
 
       - name: Cache Trivy DB
         uses: actions/cache@v4
@@ -112,29 +116,7 @@ jobs:
           name: sbom-${{ matrix.service }}
           path: sbom/
 
-      - name: DIAG przed OWASP
-        run: |
-          echo "=== RAM ==="
-          free -h
-          echo "=== .m2 na runnerze ==="
-          ls -la /home/runner/.m2/ 2>/dev/null && du -sh /home/runner/.m2/ 2>/dev/null || echo ".m2 pusty/brak"
-          echo "=== .nvd-cache ==="
-          ls -lh .nvd-cache/odc.mv.db
-          echo "=== docker info ==="
-          docker system df
-          pwd
-          ls
-          ls -la backend/
-          echo "=== env hosta ==="
-          env | grep -i "java\|jdwp\|agentlib" || echo "host czysty"
-          echo "=== co widzi JVM w kontenerze DC ==="
-          docker run --rm --entrypoint sh owasp/dependency-check:12.1.0 -c 'echo "JAVA_TOOL_OPTIONS=[$JAVA_TOOL_OPTIONS]"; echo "_JAVA_OPTIONS=[$_JAVA_OPTIONS]"; echo "JDK_JAVA_OPTIONS=[$JDK_JAVA_OPTIONS]"'
-
-      - name: Pull OWASP image 
-        if: matrix.service == 'backend'
-        run: docker pull owasp/dependency-check:12.1.0
-
-      - name: OWASP Dependency-Check TEST
+      - name: OWASP Dependency-Check
         if: matrix.service == 'backend'
         timeout-minutes: 8
         run: make owasp_dep_check SERVICE=${{ matrix.service }}
