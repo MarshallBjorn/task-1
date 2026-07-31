@@ -108,6 +108,7 @@ owasp_dep_check: check_env
 	@mkdir -p $(CURDIR)/odc-report
 	
 	docker run --rm \
+		--user $(shell id -u):$(shell id -g) \
 		-v $(CURDIR)/$(SERVICE):/src \
 		-v $(NVD_CACHE):/usr/share/dependency-check/data \
 		-v $(CURDIR)/odc-report:/report \

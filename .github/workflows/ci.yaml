@@ -139,10 +139,6 @@ jobs:
         timeout-minutes: 8
         run: make owasp_dep_check SERVICE=${{ matrix.service }}
 
-      - name: OWASP Dependency-Check
-        if: matrix.service == 'backend' && always()
-        run: make owasp_dep_check SERVICE=${{ matrix.service }}
-
       - name: Upload OWASP report
         if: matrix.service == 'backend' && always()
         uses: actions/upload-artifact@v4
