@@ -47,7 +47,7 @@ secret_scan: check_env
 	@echo "==> Trivy Secrets Scan"
 	docker run --rm \
 		-v $(CURDIR):/src \
-		-v trivy-cache:/root/.cache \
+		-v $(CURDIR)/.trivy-cache:/root/.cache \
 		-v ${HOME}/.m2:/root/.m2 \
 		aquasec/trivy \
 		fs --scanners secret /src
@@ -66,7 +66,7 @@ scan: check_env
 	@echo "==> Scanning image with Trivy..."
 	docker run \
 		-v /var/run/docker.sock:/var/run/docker.sock \
-		-v trivy-cache:/root/.cache \
+		-v $(CURDIR)/.trivy-cache:/root/.cache \
 		-v $(CURDIR)/.trivyignore:/work/.trivyignore -w /work \
 		--rm aquasec/trivy \
 		image $(IMAGE_NAME):$(TAG) \
@@ -119,6 +119,9 @@ owasp_dep_check: check_env
 
 	@echo "==> Checking image with OWASP Dependency Check..."
 	@docker run --rm \
+		-e JAVA_TOOL_OPTIONS= \
+		-e _JAVA_OPTIONS= \
+		-e JDK_JAVA_OPTIONS= \
 		-v $(CURDIR)/$(SERVICE):/src \
 		-v $(HOME)/.m2:/root/.m2 \
 		-v $(NVD_CACHE):/usr/share/dependency-check/data \
