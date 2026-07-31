@@ -1,4 +1,4 @@
-.PHONY: help check_env dockerfile_lint build scan push release
+.PHONY: help check_env dockerfile_lint build scan push release owasp_update owasp_dep_check create_sbom
 
 help:
 	@echo "Available commands:"
