@@ -1,0 +1,26 @@
+name: NVD cache keep-alive
+ 
+# Cache GitHuba wygasa po 7 dniach OD OSTATNIEGO ODCZYTU.
+# Ten cron czyta cache co 3 dni -> licznik sie resetuje -> wpis nie wygasa.
+# Uwaga: scheduled workflow GitHub wylacza po 60 dniach bez commita w repo.
+# Dlatego seed w release (nvd-seed) jest twardym fallbackiem - patrz ci.yaml.
+ 
+on:
+  schedule:
+    - cron: '0 6 */3 * *'   # co 3 dni, 06:00 UTC
+  workflow_dispatch:
+ 
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Touch NVD cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .nvd-cache
+          key: nvd-v3
+          restore-keys: nvd-v3
+ 
+      - name: Potwierdzenie
+        run: echo "Cache nvd-v3 dotkniety, 7-dniowy licznik zresetowany."
+ 

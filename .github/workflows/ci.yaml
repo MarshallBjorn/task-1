@@ -36,8 +36,35 @@ jobs:
       - name: Secret scan
         run: make secret_scan
 
+  nvd-update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+ 
+      - name: Cache NVD database
+        id: nvd-cache
+        uses: actions/cache@v4
+        with:
+          path: .nvd-cache
+          key: nvd-v3
+          restore-keys: nvd-v3
+ 
+      - name: Seed z release jesli cache pusty
+        if: steps.nvd-cache.outputs.cache-hit != 'true'
+        run: |
+          echo ">>> Cache pusty - sciagam gotowy seed bazy z release..."
+          mkdir -p .nvd-cache
+          gh release download nvd-seed \
+            --pattern 'nvd-seed.tar.gz' \
+            --output - | tar xz -C .nvd-cache
+          sudo chown -R "$USER:$USER" .nvd-cache
+          echo ">>> Zseedowano:"
+          ls -lh .nvd-cache/odc.mv.db
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   pipeline:
-    needs: repo-checks
+    needs: [repo-checks, nvd-update]
     strategy:
       fail-fast: false
       matrix:
@@ -55,16 +82,12 @@ jobs:
           restore-keys: |
             m2-
 
-      - name: Get date
-        id: date
-        run: echo "date=$(date +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache NVD database
-        uses: actions/cache@v4
+      - name: Restore NVD database
+        uses: actions/cache/restore@v4
         with:
           path: .nvd-cache
-          key: nvd-v2-${{ steps.date.outputs.date }}
-          restore-keys: nvd-v2-
+          key: nvd-v3
+          restore-keys: nvd-v3
 
       - name: Cache Trivy DB
         uses: actions/cache@v4
@@ -92,8 +115,6 @@ jobs:
       - name: OWASP Dependency-Check
         if: matrix.service == 'backend'
         run: make owasp_dep_check SERVICE=${{ matrix.service }}
-        env:
-          NVD_API_KEY: ${{ secrets.NVD_API_KEY }} 
 
       - name: Upload OWASP report
         if: matrix.service == 'backend' && always()
@@ -107,4 +128,3 @@ jobs:
         run: make push SERVICE=${{ matrix.service }} TAG=${{ github.sha }}
         env:
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
-

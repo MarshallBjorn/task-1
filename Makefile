@@ -21,6 +21,8 @@ NVD_API_KEY ?=
 
 IMAGE_NAME ?= ghcr.io/marshallbjorn/trippy-$(SERVICE)
 DOCKERFILE = $(SERVICE)/Dockerfile
+NVD_CACHE ?= $(CURDIR)/.nvd-cache
+ODC_IMAGE ?= owasp/dependency-check:12.1.0
 
 DOCKLE_LATEST := $(shell curl --silent "https://api.github.com/repos/goodwithtech/dockle/releases/latest" | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
 ifeq ($(DOCKLE_LATEST),)
@@ -89,33 +91,44 @@ create_sbom: check_env
 		image $(IMAGE_NAME):$(TAG) \
 		--format cyclonedx --output /sbom/$(SERVICE)-$(TAG)-sbom.json
 
+
+owasp_update:
+	@test -n "$(NVD_API_KEY)" || (echo "Error: NVD_API_KEY not set (potrzebny tylko do update, nie do skanu)" && exit 1)
+	@mkdir -p $(NVD_CACHE)
+	@docker run --rm \
+		-v $(NVD_CACHE):/usr/share/dependency-check/data \
+		$(ODC_IMAGE) \
+			--updateonly \
+			--nvdApiKey $(NVD_API_KEY)
+
+
 # 3.3 OWASP Dependency Check
 owasp_dep_check: check_env
-	@test -n "$(NVD_API_KEY)" || (echo "Error: NVD_API_KEY not set" && exit 1)
+	@test -f $(NVD_CACHE)/odc.mv.db || \
+		(echo "Error: baza NVD nieobecna ($(NVD_CACHE)/odc.mv.db). Odpal 'make owasp_update' albo zseeduj cache." && exit 1)
 	@mkdir -p $(CURDIR)/odc-report
-	@mkdir -p $(CURDIR)/.nvd-cache
+	@mkdir -p $(NVD_CACHE)
 
 	@echo "==> Cleaning up potential stale H2 locks..."
-	@rm -f $(CURDIR)/.nvd-cache/*.lock.db
-	@rm -f $(CURDIR)/.nvd-cache/odc.update.lock
+	@rm -f $(NVD_CACHE)/*.lock.db
+	@rm -f $(NVD_CACHE)/odc.update.lock
 
 	@echo "==> Fix permissions for Docker mounts..."
-	@chmod -R 777 $(CURDIR)/odc-report
-	@chmod -R 777 $(CURDIR)/.nvd-cache
+	@chmod -R u+rw $(CURDIR)/odc-report 2>/dev/null || true
+	@chmod -R u+rw $(NVD_CACHE) 2>/dev/null || true
 
 	@echo "==> Checking image with OWASP Dependency Check..."
 	@docker run --rm \
 		-v $(CURDIR)/$(SERVICE):/src \
 		-v $(HOME)/.m2:/root/.m2 \
-		-v $(CURDIR)/.nvd-cache:/usr/share/dependency-check/data \
+		-v $(NVD_CACHE):/usr/share/dependency-check/data \
 		-v $(CURDIR)/odc-report:/report \
-		owasp/dependency-check \
+		$(ODC_IMAGE) \
 			--scan /src \
 			--format HTML \
 			--out /report \
-			--nvdApiKey $(NVD_API_KEY) \
-			--project "trippy-$(SERVICE)"
-			--debug
+			--project "trippy-$(SERVICE)" \
+			--noupdate
 
 # 4. Push image to registry
 push: check_env
