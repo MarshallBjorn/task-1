@@ -130,9 +130,17 @@ jobs:
           echo "=== co widzi JVM w kontenerze DC ==="
           docker run --rm --entrypoint sh owasp/dependency-check:12.1.0 -c 'echo "JAVA_TOOL_OPTIONS=[$JAVA_TOOL_OPTIONS]"; echo "_JAVA_OPTIONS=[$_JAVA_OPTIONS]"; echo "JDK_JAVA_OPTIONS=[$JDK_JAVA_OPTIONS]"'
 
+      - name: Pull OWASP image
+        if: matrix.service == 'backend'
+        run: docker pull owasp/dependency-check:12.1.0
+
+      - name: OWASP Dependency-Check
+        if: matrix.service == 'backend'
+        timeout-minutes: 8
+        run: make owasp_dep_check SERVICE=${{ matrix.service }}
+
       - name: OWASP Dependency-Check
         if: matrix.service == 'backend' && always()
-        timeout-minutes: 10
         run: make owasp_dep_check SERVICE=${{ matrix.service }}
 
       - name: Upload OWASP report

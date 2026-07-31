@@ -106,8 +106,9 @@ owasp_update:
 owasp_dep_check: check_env
 	@test -f $(NVD_CACHE)/odc.mv.db || (echo "baza brak" && exit 1)
 	@mkdir -p $(CURDIR)/odc-report
+	docker ps
 	@echo ">>> START $$(date +%T)"
-	-timeout 60 docker run --rm \
+	-timeout 300 docker run --rm \
 		-v $(CURDIR)/$(SERVICE):/src \
 		-v $(NVD_CACHE):/usr/share/dependency-check/data \
 		-v $(CURDIR)/odc-report:/report \
