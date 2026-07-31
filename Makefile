@@ -92,10 +92,11 @@ create_sbom: check_env
 		--format cyclonedx --output /sbom/$(SERVICE)-$(TAG)-sbom.json
 
 
-owasp_update:
+owasp_update: check_env
 	@test -n "$(NVD_API_KEY)" || (echo "Error: NVD_API_KEY not set (potrzebny tylko do update, nie do skanu)" && exit 1)
 	@mkdir -p $(NVD_CACHE)
 	@docker run --rm \
+		--user $(shell id -u):$(shell id -g) \
 		-v $(NVD_CACHE):/usr/share/dependency-check/data \
 		$(ODC_IMAGE) \
 			--updateonly \
@@ -106,9 +107,9 @@ owasp_update:
 owasp_dep_check: check_env
 	@test -f $(NVD_CACHE)/odc.mv.db || (echo "baza brak" && exit 1)
 	@mkdir -p $(CURDIR)/odc-report
-	docker ps
-	@echo ">>> START $$(date +%T)"
-	-timeout 300 docker run --rm \
+	
+	docker run --rm \
+		--user $(shell id -u):$(shell id -g) \
 		-v $(CURDIR)/$(SERVICE):/src \
 		-v $(NVD_CACHE):/usr/share/dependency-check/data \
 		-v $(CURDIR)/odc-report:/report \
@@ -117,12 +118,8 @@ owasp_dep_check: check_env
 			--format HTML \
 			--out /report \
 			--project "trippy-$(SERVICE)" \
-			--noupdate \
-		> $(CURDIR)/odc-report/console.log 2>&1; \
-		echo "EXIT=$$?" | tee -a $(CURDIR)/odc-report/console.log
-	@echo ">>> KONIEC $$(date +%T)"
-	@echo "===== OSTATNIE 40 LINII console.log ====="
-	@tail -40 $(CURDIR)/odc-report/console.log || echo "console.log PUSTY albo nie powstal"
+			--noupdate
+
 
 # 4. Push image to registry
 push: check_env
