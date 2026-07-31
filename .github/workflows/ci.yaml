@@ -63,8 +63,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .nvd-cache
-          key: nvd-${{ steps.date.outputs.date }}
-          restore-keys: nvd-
+          key: nvd-v2-${{ steps.date.outputs.date }}
+          restore-keys: nvd-v2-
 
       - name: Cache Trivy DB
         uses: actions/cache@v4

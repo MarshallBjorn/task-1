@@ -93,6 +93,11 @@ create_sbom: check_env
 owasp_dep_check: check_env
 	@test -n "$(NVD_API_KEY)" || (echo "Error: NVD_API_KEY not set" && exit 1)
 	@mkdir -p $(CURDIR)/odc-report
+	@mkdir -p $(CURDIR)/.nvd-cache
+
+	@echo "==> Cleaning up potential stale H2 locks..."
+	@rm -f $(CURDIR)/.nvd-cache/*.lock.db
+	@rm -f $(CURDIR)/.nvd-cache/odc.update.lock
 
 	@echo "==> Checking image with OWASP Dependency Check..."
 	@docker run --rm \
