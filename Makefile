@@ -65,6 +65,7 @@ scan: check_env
 	docker run \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v trivy-cache:/root/.cache \
+		-v $(CURDIR)/.trivyignore:/work/.trivyignore -w /work \
 		--rm aquasec/trivy \
 		image $(IMAGE_NAME):$(TAG) \
 		--severity HIGH,CRITICAL \
