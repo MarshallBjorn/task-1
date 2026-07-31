@@ -99,6 +99,10 @@ owasp_dep_check: check_env
 	@rm -f $(CURDIR)/.nvd-cache/*.lock.db
 	@rm -f $(CURDIR)/.nvd-cache/odc.update.lock
 
+	@echo "==> Fix permissions for Docker mounts..."
+	@chmod -R 777 $(CURDIR)/odc-report
+	@chmod -R 777 $(CURDIR)/.nvd-cache
+
 	@echo "==> Checking image with OWASP Dependency Check..."
 	@docker run --rm \
 		-v $(CURDIR)/$(SERVICE):/src \
@@ -111,6 +115,7 @@ owasp_dep_check: check_env
 			--out /report \
 			--nvdApiKey $(NVD_API_KEY) \
 			--project "trippy-$(SERVICE)"
+			--debug
 
 # 4. Push image to registry
 push: check_env
