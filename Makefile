@@ -119,9 +119,6 @@ owasp_dep_check: check_env
 
 	@echo "==> Checking image with OWASP Dependency Check..."
 	@docker run --rm \
-		-e JAVA_TOOL_OPTIONS= \
-		-e _JAVA_OPTIONS= \
-		-e JDK_JAVA_OPTIONS= \
 		-v $(CURDIR)/$(SERVICE):/src \
 		-v $(HOME)/.m2:/root/.m2 \
 		-v $(NVD_CACHE):/usr/share/dependency-check/data \
@@ -131,8 +128,7 @@ owasp_dep_check: check_env
 			--format HTML \
 			--out /report \
 			--project "trippy-$(SERVICE)" \
-			--noupdate \
-			--debug
+			--noupdate
 
 # 4. Push image to registry
 push: check_env
