@@ -18,9 +18,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .nvd-cache
-          key: nvd-v3
-          restore-keys: nvd-v3
+          key: nvd-v4
+          restore-keys: nvd-v4
  
       - name: Potwierdzenie
-        run: echo "Cache nvd-v3 dotkniety, 7-dniowy licznik zresetowany."
+        run: echo "Cache nvd-v4 dotkniety, 7-dniowy licznik zresetowany."
  

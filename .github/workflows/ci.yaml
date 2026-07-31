@@ -46,8 +46,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .nvd-cache
-          key: nvd-v3
-          restore-keys: nvd-v3
+          key: nvd-v4
+          restore-keys: nvd-v4
  
       - name: Seed z release jesli cache pusty
         if: steps.nvd-cache.outputs.cache-hit != 'true'
@@ -86,8 +86,8 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .nvd-cache
-          key: nvd-v3
-          restore-keys: nvd-v3
+          key: nvd-v4
+          restore-keys: nvd-v4
 
       - name: Cache Trivy DB
         uses: actions/cache@v4
@@ -130,11 +130,11 @@ jobs:
           echo "=== co widzi JVM w kontenerze DC ==="
           docker run --rm --entrypoint sh owasp/dependency-check:12.1.0 -c 'echo "JAVA_TOOL_OPTIONS=[$JAVA_TOOL_OPTIONS]"; echo "_JAVA_OPTIONS=[$_JAVA_OPTIONS]"; echo "JDK_JAVA_OPTIONS=[$JDK_JAVA_OPTIONS]"'
 
-      - name: Pull OWASP image
+      - name: Pull OWASP image 
         if: matrix.service == 'backend'
         run: docker pull owasp/dependency-check:12.1.0
 
-      - name: OWASP Dependency-Check
+      - name: OWASP Dependency-Check TEST
         if: matrix.service == 'backend'
         timeout-minutes: 8
         run: make owasp_dep_check SERVICE=${{ matrix.service }}
