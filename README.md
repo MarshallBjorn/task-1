@@ -7,27 +7,34 @@ Tworzy przepływ obrazu Docker z sprawdzeniem jakości. Używa narzędź hadolin
 Użycie:
 ```
 export GHCR_TOKEN=<token>
+export NVD_API_KEY=[api_key]
 make release SERVICE=<backend|frontend> [TAG=<tag>]
 ```
 
 Użycie CI:
 ```
-Dowolny push na repo uruchamia główny pipeline
+Dowolny push na repo uruchamia główny pipeline.
+
+Cron pipeline się uruchamia codziennie o 1 godzinie UTC, albo ręcznie z panelu GitHub.
 ```
 
 - `SERVICE` - obraz serwisu do zbudowania, sprawdzenia i wypchnięcia. Domyślnie jest ustawiony na `backend`
 - `TAG` - tag obrazu, domyślnie jest w formie git short SHA
 - `GHCR_TOKEN` - token do rejestru udostępniony przez powłokę. Zbędne przy użyciu w prawdziwym `CI`, ponieważ byłby dostępny przez manager sekretów np. `GitHub Secrets`.
+- `NVD_API_KEY` - klucz api generowany przez NIST (National Institute of Standarts and Technology). Nie jest niezbędny, ale bez niego pobieranie bazy danych NVD do OWASP Dependency Check, może się drastycznie wydłużyć. Jest darmowy do założenia.
 
-Przepływ głównego pipeline'u CI:
+**Przepływ głównego pipeline'u CI:**
 1. repo-checks
+   - Checkout.
    - Tworzy cache m2, potrzebny dla narzędzi skanowania, przy targetcie będącym w Maven.
    - Załadowuje cache `m2`.
    - Uruchamia narzędzie Hadolint, skanuje Dockerfile'y obu obrazów.
-2. nvd-update - służy do sprawdzenia stanu cache `nvd-v4`.
+3. nvd-update - służy do sprawdzenia stanu cache `nvd-v4`.
+   - Checkout.
    - Pobiera cache używając klucza.
    - Seeduję go danymi, jeśli jest pusty seduje go pobraną wcześniej biblioteką NVD z prywatnego GitHub Release.
-3. pipeline - po wykonaniu kroku 1. oraz 2. uruchamia główny przebieg. Równolegle wykonuje się dla obu obrazów - `backend` oraz `frontend`.
+5. pipeline - po wykonaniu kroku 1. oraz 2. uruchamia główny przebieg. Równolegle wykonuje się dla obu obrazów - `backend` oraz `frontend`.
+   - Checkout.
    - Odzyskuje repozytorium .m2 z cache `m2`.
    - Odzyskuje bazę danych NVD z cache `nvd-v4`.
    - Tworzy cache do przechowywania `Trivy`.
@@ -36,6 +43,13 @@ Przepływ głównego pipeline'u CI:
    - Generuje `SBOM` (przy użyciu `Trivy` w formacie `CycloneDX`) i upload'uje go jako artefakt.
    - Wykonuje OWASP Dependency Check, tylko dla obrazu `backend`. Następnie upload'uje go jako kolejny artefakt.
    - Wypycha sprawdzony obraz do GHCR
+
+**Przepływ cron do update'owania bazy danych NVD:**
+1. keepalive - oryginalnie zamysł polegał na tym, żeby uniknąć usunięcia cache'u z bazą NVD poprzez kroniczny job, który by używał cache raz na kilka dni. Ostatecznie zostało przerobione na kron job, który mimo zachowania cache przy życiu, jeszcze wykonuje update samej bazy danych. Taka potrzeba wynika z tego powodu, że NVD jest aktualizowane codziennie.
+   - Checkout.
+   - Odzyskanie cache `nvd-v4`.
+   - Update bazy danych NVD, używa zrobiony wcześniej klucz API z Secrets.
+   - Zapis zaktualizowanej bazy danych do cache `nvd-v4`.
 
 ### Dokładny opis kroków
 
