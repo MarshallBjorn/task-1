@@ -1,25 +1,41 @@
 # TASK 1
 
-> Chwiłę po odesłaniu mnie olśniło że warto podzielić jedno polecenie `Makefile` na kilka, a po chwili okazało się że można zrobić `<polecenie>: <zależność>`. Więc przerobiłem główny `Makefile`, zostawiając stary w pliku `Makefile.backup`.
-
 ## Opis
 
-Tworzy przepływ obrazu Docker z sprawdzeniem jakości. Używa narzędź hadolint, trivy oraz dockle. Składa się z 4 kroków, każdy z których jest w stanie przerwać przepływ przy wykryciu błędów.<br>
+Tworzy przepływ obrazu Docker z sprawdzeniem jakości. Używa narzędź hadolint, trivy oraz dockle oraz OWASP dependency check. Składa się z 4 kroków, każdy z których jest w stanie przerwać przepływ przy wykryciu błędów. Kolejnym zadaniem w obrębach tego projektu stażowego, było użycie utworzonego przepływu do stworzenia CI pipeline'u. Ostatecznie zostało zaprojektowane dwa pipeline'y.<br>
 
 Użycie:
 ```
 export GHCR_TOKEN=<token>
 make release SERVICE=<backend|frontend> [TAG=<tag>]
 ```
+
+Użycie CI:
+```
+Dowolny push na repo uruchamia główny pipeline
+```
+
 - `SERVICE` - obraz serwisu do zbudowania, sprawdzenia i wypchnięcia. Domyślnie jest ustawiony na `backend`
 - `TAG` - tag obrazu, domyślnie jest w formie git short SHA
 - `GHCR_TOKEN` - token do rejestru udostępniony przez powłokę. Zbędne przy użyciu w prawdziwym `CI`, ponieważ byłby dostępny przez manager sekretów np. `GitHub Secrets`.
 
-Przepływ:
-1. Skanuje Dockerfile za pomocą narzędzia hadolint.
-2. Buduje obraz.
-3. Sprawdza przy pomocy narzędź trivy oraz dockle jakość obrazów.
-4. Wypycha obraz do rejestru GHCR.
+Przepływ głównego pipeline'u CI:
+1. repo-checks
+   - Tworzy cache m2, potrzebny dla narzędzi skanowania, przy targetcie będącym w Maven.
+   - Załadowuje cache `m2`.
+   - Uruchamia narzędzie Hadolint, skanuje Dockerfile'y obu obrazów.
+2. nvd-update - służy do sprawdzenia stanu cache `nvd-v4`.
+   - Pobiera cache używając klucza.
+   - Seeduję go danymi, jeśli jest pusty seduje go pobraną wcześniej biblioteką NVD z prywatnego GitHub Release.
+3. pipeline - po wykonaniu kroku 1. oraz 2. uruchamia główny przebieg. Równolegle wykonuje się dla obu obrazów - `backend` oraz `frontend`.
+   - Odzyskuje repozytorium .m2 z cache `m2`.
+   - Odzyskuje bazę danych NVD z cache `nvd-v4`.
+   - Tworzy cache do przechowywania `Trivy`.
+   - Buduje obraz.
+   - Wykonuje skan na obrazie `Dockle` + `Trivy`.
+   - Generuje `SBOM` (przy użyciu `Trivy` w formacie `CycloneDX`) i upload'uje go jako artefakt.
+   - Wykonuje OWASP Dependency Check, tylko dla obrazu `backend`. Następnie upload'uje go jako kolejny artefakt.
+   - Wypycha sprawdzony obraz do GHCR
 
 ### Dokładny opis kroków
 
